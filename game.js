@@ -7,6 +7,10 @@ let player = {
   armor:null
 };
 
+function closeEquip(){
+  equipPanel.style.display = 'none';
+}
+
 function updateHUD(){
   hp.innerText='HP:'+player.hp;
   mp.innerText='MP:'+player.mp;
