@@ -126,6 +126,8 @@ function fight(enemy){
   updateHUD();
 }
 
+updateExp();
+
 function findLoot(){
   let loot=['血药','蓝药','银宝箱','金宝箱','妖精盔甲'];
   let item=loot[Math.floor(Math.random()*loot.length)];
