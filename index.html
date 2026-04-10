@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Medieval Horror Adventure</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game">
+    <h1>中世纪恐怖探险</h1>
+    <div id="hud">
+      <span id="hp">HP: 100</span>
+      <span id="mp">MP: 50</span>
+      <span id="gold">Gold: 0</span>
+    </div>
+
+    <div id="scene">欢迎来到城镇</div>
+
+    <div id="actions">
+      <button onclick="goTown()">城镇</button>
+      <button onclick="goForest()">森林</button>
+      <button onclick="goLava()">熔岩洞</button>
+    </div>
+
+    <div id="inventory">
+      <h3>物品栏</h3>
+      <ul id="items"></ul>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
