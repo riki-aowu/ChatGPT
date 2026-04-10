@@ -7,10 +7,6 @@ let player = {
   armor:null
 };
 
-function closeEquip(){
-  equipPanel.style.display = 'none';
-}
-
 function updateHUD(){
   hp.innerText='HP:'+player.hp;
   mp.innerText='MP:'+player.mp;
@@ -57,7 +53,7 @@ function updateCharacter(){
 }
 
 function openEquip(){
-  equipPanel.style.display='block';
+  document.getElementById("equipPanel").style.display = "block";
 }
 
 function buy(item,price){
