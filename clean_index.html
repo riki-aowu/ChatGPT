@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Game Clean</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game">
+<h1>中世纪恐怖探险</h1>
+<div id="hud">
+<span id="hp"></span>
+<span id="mp"></span>
+<span id="gold"></span>
+<span id="atk"></span>
+<span id="def"></span>
+</div>
+
+<div id="scene"></div>
+
+<div>
+<button onclick="goTown()">城镇</button>
+<button onclick="goForest()">森林</button>
+<button onclick="goLava()">熔岩</button>
+<button onclick="openEquip()">装备</button>
+</div>
+
+<ul id="items"></ul>
+
+<div id="equipPanel" style="display:none">
+<div id="character">🙂</div>
+<div>武器: <span id="weaponSlot"></span></div>
+<div>护甲: <span id="armorSlot"></span></div>
+</div>
+
+</div>
+<script src="clean_game.js"></script>
+</body>
+</html>
