@@ -1,11 +1,40 @@
 // 合并最终版本（使用这个替换）
 let player = {
+  level:1,
+  exp:0,
+  expMax:100,
   hp:100, mp:50, gold:100,
   atk:10, def:5,
   inventory:[],
   weapon:null,
   armor:null
 };
+
+function updateExp(){
+  levelText.innerText = "Lv." + player.level;
+  let percent = (player.exp / player.expMax) * 100;
+  expBar.style.width = percent + "%";
+}
+
+function gainExp(amount){
+  player.exp += amount;
+
+  while(player.exp >= player.expMax && player.level < 20){
+    player.exp -= player.expMax;
+    player.level++;
+    player.expMax += 50;
+
+    // 升级奖励
+    player.hp += 20;
+    player.atk += 5;
+    player.def += 3;
+
+    alert("升级！当前等级：" + player.level);
+  }
+
+  updateExp();
+  updateHUD();
+}
 
 function updateHUD(){
   hp.innerText='HP:'+player.hp;
@@ -66,9 +95,26 @@ function buy(item,price){
 }
 
 function fight(enemy){
-  let dmg=Math.max(1,Math.floor(Math.random()*15)-player.def);
-  player.hp-=dmg;
+
+  const enemyData = {
+    "史莱姆":10,
+    "哥布林":20,
+    "猫妖":25,
+    "狐妖":30,
+    "骷髅":40,
+    "僵尸":45,
+    "蝙蝠妖":50,
+    "黑龙":100
+  };
+
+  let dmg = Math.max(1,Math.floor(Math.random()*15)-player.def);
+  player.hp -= dmg;
+
   alert(enemy+'攻击你-'+dmg);
+
+  // 给经验
+  let exp = enemyData[enemy] || 10;
+  gainExp(exp);
 
   if(Math.random()<0.4) findLoot();
 
