@@ -45,6 +45,10 @@ function equip(item){
   updateCharacter();
 }
 
+function closeEquip(){
+  document.getElementById("equipPanel").style.display = "none";
+}
+
 function updateCharacter(){
   let char='🙂';
   if(player.weapon) char='🗡️'+char;
