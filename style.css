@@ -33,3 +33,49 @@ button:hover {
 #inventory {
   margin-top: 20px;
 }
+
+#forestExplorer {
+  border: 1px solid #0f0;
+  padding: 10px;
+  margin: 12px 0;
+  background: #061106;
+}
+
+#forestHint {
+  margin-bottom: 8px;
+}
+
+#forestCanvas {
+  width: 100%;
+  max-width: 576px;
+  background: #111;
+  border: 1px solid #0f0;
+  image-rendering: pixelated;
+}
+
+#joystickWrap {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+#joystickBase {
+  width: 120px;
+  height: 120px;
+  border-radius: 60px;
+  border: 2px solid #0f0;
+  background: rgba(0, 255, 0, 0.08);
+  position: relative;
+  touch-action: none;
+}
+
+#joystickStick {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  background: #0f0;
+  opacity: 0.85;
+  position: absolute;
+  left: 34px;
+  top: 34px;
+}
