@@ -149,11 +149,13 @@ function goTown(){
 }
 
 function goForest(){
+  scene.innerHTML = "你进入迷之森林...";
   scare();
   fight(['哥布林','史莱姆','猫妖','狐妖'][Math.floor(Math.random()*4)]);
 }
 
 function goLava(){
+  scene.innerHTML = "你进入熔岩洞...";
   fight(['骷髅','僵尸','蝙蝠妖','黑龙'][Math.floor(Math.random()*4)]);
 }
 
