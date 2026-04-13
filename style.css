@@ -30,6 +30,42 @@ button:hover {
   min-height: 100px;
 }
 
+#townMap {
+  margin: 10px 0;
+  border: 1px solid #0f0;
+  padding: 8px;
+  background: #071207;
+}
+
+.town-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.town-row:last-child {
+  margin-bottom: 0;
+}
+
+.town-cell {
+  border: 1px dashed #0f0;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.town-home {
+  background: rgba(0, 150, 255, 0.12);
+}
+
+.town-shop {
+  background: rgba(255, 255, 0, 0.15);
+}
+
+.town-forest-gate {
+  background: rgba(0, 255, 120, 0.14);
+}
+
 #inventory {
   margin-top: 20px;
 }
@@ -78,4 +114,26 @@ button:hover {
   position: absolute;
   left: 34px;
   top: 34px;
+}
+
+#shopConfirmModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+#shopConfirmCard {
+  width: 280px;
+  border: 1px solid #0f0;
+  background: #081608;
+  padding: 16px;
+  text-align: center;
+}
+
+#shopConfirmText {
+  margin-bottom: 12px;
 }

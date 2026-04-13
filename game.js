@@ -49,9 +49,37 @@ function updateInventory(){
   player.inventory.forEach(item=>{
     let li=document.createElement('li');
     li.innerText=item;
-    li.onclick=()=>equip(item);
+    li.onclick=()=>{
+      if(item === "血药" || item === "蓝药"){
+        useConsumable(item);
+      }else{
+        equip(item);
+      }
+    };
     items.appendChild(li);
   });
+}
+
+function removeOneItem(itemName){
+  const idx = player.inventory.indexOf(itemName);
+  if(idx === -1) return false;
+  player.inventory.splice(idx, 1);
+  return true;
+}
+
+function useConsumable(item){
+  if(!removeOneItem(item)) return;
+  if(item === "血药"){
+    const heal = 60;
+    player.hp += heal;
+    alert(`你使用了血药，恢复 ${heal} HP`);
+  }else if(item === "蓝药"){
+    const restore = 30;
+    player.mp += restore;
+    alert(`你使用了蓝药，恢复 ${restore} MP`);
+  }
+  updateHUD();
+  updateInventory();
 }
 
 function equip(item){
@@ -91,7 +119,34 @@ function buy(item,price){
     player.inventory.push(item);
     updateInventory();
     updateHUD();
+    alert(`购买成功：${item}（-${price} Gold）`);
+  }else{
+    alert("金币不足，无法购买。");
   }
+}
+
+let pendingPurchase = null;
+
+function promptPurchase(item, price){
+  pendingPurchase = { item, price };
+  const modal = document.getElementById("shopConfirmModal");
+  const text = document.getElementById("shopConfirmText");
+  if(!modal || !text) return;
+  text.innerText = `您确定要购买吗？\n${item} - ${price} Gold`;
+  modal.style.display = "flex";
+}
+
+function cancelPurchase(){
+  pendingPurchase = null;
+  const modal = document.getElementById("shopConfirmModal");
+  if(modal) modal.style.display = "none";
+}
+
+function confirmPurchase(){
+  if(pendingPurchase){
+    buy(pendingPurchase.item, pendingPurchase.price);
+  }
+  cancelPurchase();
 }
 
 const MONSTER_DB = {
@@ -147,6 +202,38 @@ const forestState = {
   encounterSteps: 0,
   inBattle: false,
   bossDefeated: false
+};
+
+const lavaState = {
+  active: false,
+  floor: 1,
+  cols: 24,
+  rows: 16,
+  tile: 24,
+  playerX: 2,
+  playerY: 13,
+  encounterSteps: 0,
+  inBattle: false,
+  bossDefeated: false
+};
+
+const LAVA_STAIRS_F1 = { x: 21, y: 3 };
+const LAVA_ENTRANCE_F2 = { x: 2, y: 13 };
+const LAVA_BOSS_TILE = { x: 20, y: 2 };
+const openedChests = new Set();
+const MAP_CHESTS = {
+  forest: [
+    { id: "forest_1", x: 6, y: 8, type: "silver" },
+    { id: "forest_2", x: 14, y: 7, type: "gold" }
+  ],
+  lava1: [
+    { id: "lava1_1", x: 16, y: 9, type: "silver" },
+    { id: "lava1_2", x: 18, y: 3, type: "gold" }
+  ],
+  lava2: [
+    { id: "lava2_1", x: 10, y: 9, type: "silver" },
+    { id: "lava2_2", x: 15, y: 2, type: "gold" }
+  ]
 };
 
 function getTierMult(tier){
@@ -233,6 +320,34 @@ function getForestTileType(x, y){
   return "grass";
 }
 
+function inRange(v, start, end){
+  return v >= start && v <= end;
+}
+
+function isLavaWalkable(floor, x, y){
+  if(x < 0 || y < 0 || x >= lavaState.cols || y >= lavaState.rows) return false;
+
+  if(floor === 1){
+    if(inRange(y, 13, 13) && inRange(x, 1, 8)) return true;
+    if(inRange(x, 8, 8) && inRange(y, 10, 13)) return true;
+    if(inRange(y, 10, 10) && inRange(x, 8, 16)) return true;
+    if(inRange(x, 16, 16) && inRange(y, 6, 10)) return true;
+    if(inRange(y, 6, 6) && inRange(x, 12, 16)) return true;
+    if(inRange(x, 12, 12) && inRange(y, 3, 6)) return true;
+    if(inRange(y, 3, 3) && inRange(x, 12, 21)) return true;
+    return false;
+  }
+
+  if(inRange(y, 13, 13) && inRange(x, 2, 18)) return true;
+  if(inRange(x, 18, 18) && inRange(y, 9, 13)) return true;
+  if(inRange(y, 9, 9) && inRange(x, 9, 18)) return true;
+  if(inRange(x, 9, 9) && inRange(y, 5, 9)) return true;
+  if(inRange(y, 5, 5) && inRange(x, 9, 20)) return true;
+  if(inRange(x, 20, 20) && inRange(y, 2, 5)) return true;
+  if(inRange(y, 2, 2) && inRange(x, 14, 20)) return true;
+  return false;
+}
+
 function drawForest(){
   const canvas = document.getElementById("forestCanvas");
   if(!canvas) return;
@@ -256,6 +371,8 @@ function drawForest(){
     }
   }
 
+  drawMapChests(ctx, t, "forest");
+
   // 玩家像素小人
   const px = forestState.playerX * t;
   const py = forestState.playerY * t;
@@ -266,6 +383,96 @@ function drawForest(){
   ctx.fillStyle = "#dddddd";
   ctx.fillRect(px+6, py+20, 4, 4);  // 左脚
   ctx.fillRect(px+14, py+20, 4, 4); // 右脚
+}
+
+function drawLava(){
+  const canvas = document.getElementById("forestCanvas");
+  if(!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const t = lavaState.tile;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for(let y=0; y<lavaState.rows; y++){
+    for(let x=0; x<lavaState.cols; x++){
+      const walkable = isLavaWalkable(lavaState.floor, x, y);
+      if(!walkable){
+        ctx.fillStyle = "#030303"; // 山洞外黑色空气墙
+      }else{
+        const lavaGlow = (x + y) % 3 === 0;
+        ctx.fillStyle = lavaGlow ? "#78310a" : "#4b2b1b";
+      }
+      ctx.fillRect(x*t, y*t, t, t);
+    }
+  }
+
+  drawMapChests(ctx, t, lavaState.floor === 1 ? "lava1" : "lava2");
+
+  if(lavaState.floor === 1){
+    ctx.fillStyle = "#75d8ff";
+    ctx.fillRect(LAVA_STAIRS_F1.x*t + 6, LAVA_STAIRS_F1.y*t + 6, 12, 12);
+  }else{
+    ctx.fillStyle = "#75d8ff";
+    ctx.fillRect(LAVA_ENTRANCE_F2.x*t + 6, LAVA_ENTRANCE_F2.y*t + 6, 12, 12);
+    if(!lavaState.bossDefeated){
+      ctx.fillStyle = "#d62828";
+      ctx.fillRect(LAVA_BOSS_TILE.x*t + 5, LAVA_BOSS_TILE.y*t + 5, 14, 14);
+    }
+  }
+
+  const px = lavaState.playerX * t;
+  const py = lavaState.playerY * t;
+  ctx.fillStyle = "#f3e5ab";
+  ctx.fillRect(px+8, py+4, 8, 8);
+  ctx.fillStyle = "#4aa3ff";
+  ctx.fillRect(px+7, py+12, 10, 8);
+  ctx.fillStyle = "#dddddd";
+  ctx.fillRect(px+6, py+20, 4, 4);
+  ctx.fillRect(px+14, py+20, 4, 4);
+}
+
+function drawMapChests(ctx, tileSize, mapKey){
+  const list = MAP_CHESTS[mapKey] || [];
+  list.forEach(chest => {
+    if(openedChests.has(chest.id)) return;
+    const px = chest.x * tileSize;
+    const py = chest.y * tileSize;
+    const bodyColor = chest.type === "gold" ? "#d9a515" : "#b9c0ca";
+    ctx.fillStyle = bodyColor;
+    ctx.fillRect(px + 5, py + 9, 14, 10);
+    ctx.fillStyle = "#4a2f16";
+    ctx.fillRect(px + 5, py + 7, 14, 4);
+    ctx.fillStyle = "#111";
+    ctx.fillRect(px + 11, py + 12, 2, 4);
+  });
+}
+
+function rollChestReward(type){
+  if(type === "gold"){
+    const goldGain = 80 + Math.floor(Math.random() * 61);
+    player.gold += goldGain;
+    const rewards = ["钢剑", "铁甲", "血药", "蓝药", "金宝箱"];
+    const reward = rewards[Math.floor(Math.random() * rewards.length)];
+    player.inventory.push(reward);
+    return `打开金宝箱：获得 ${goldGain} Gold 和 ${reward}`;
+  }
+
+  const goldGain = 30 + Math.floor(Math.random() * 31);
+  player.gold += goldGain;
+  const rewards = ["血药", "蓝药", "银宝箱"];
+  const reward = rewards[Math.floor(Math.random() * rewards.length)];
+  player.inventory.push(reward);
+  return `打开银宝箱：获得 ${goldGain} Gold 和 ${reward}`;
+}
+
+function checkAndOpenChest(mapKey, tx, ty){
+  const list = MAP_CHESTS[mapKey] || [];
+  const chest = list.find(c => c.x === tx && c.y === ty && !openedChests.has(c.id));
+  if(!chest) return;
+  openedChests.add(chest.id);
+  const msg = rollChestReward(chest.type);
+  alert(msg);
+  updateHUD();
+  updateInventory();
 }
 
 function setupJoystick(){
@@ -286,8 +493,22 @@ function setupJoystick(){
     const ny = (dy / len) * clamped;
     stick.style.left = `${center - 26 + nx}px`;
     stick.style.top = `${center - 26 + ny}px`;
-    forestState.moveX = nx / maxRadius;
-    forestState.moveY = ny / maxRadius;
+
+    // 摇杆灵敏度调优：加入死区 + 非线性响应，避免轻微拨动就“起飞”
+    const rawX = nx / maxRadius;
+    const rawY = ny / maxRadius;
+    const deadZone = 0.2;
+
+    const shapeAxis = (v) => {
+      const absV = Math.abs(v);
+      if(absV <= deadZone) return 0;
+      const normalized = (absV - deadZone) / (1 - deadZone);
+      const curved = Math.pow(normalized, 1.6);
+      return Math.sign(v) * curved;
+    };
+
+    forestState.moveX = shapeAxis(rawX);
+    forestState.moveY = shapeAxis(rawY);
   }
 
   function resetStick(){
@@ -347,7 +568,7 @@ function checkForestBoss(){
 
 function stepForestMovement(){
   if(!forestState.active || forestState.inBattle) return;
-  const speed = 0.18;
+  const speed = 0.12;
   const nextX = forestState.playerX + forestState.moveX * speed;
   const nextY = forestState.playerY + forestState.moveY * speed;
   const tx = Math.round(nextX);
@@ -357,6 +578,7 @@ function stepForestMovement(){
     forestState.playerX = Math.max(0, Math.min(forestState.cols - 1, nextX));
     forestState.playerY = Math.max(0, Math.min(forestState.rows - 1, nextY));
     if(movedTile){
+      checkAndOpenChest("forest", tx, ty);
       forestState.encounterSteps++;
       if(forestState.encounterSteps >= 3){
         forestState.encounterSteps = 0;
@@ -379,10 +601,102 @@ function startForestExploration(){
   forestState.playerY = 8;
   forestState.bossDefeated = false;
   forestState.encounterSteps = 0;
+  lavaState.active = false;
   document.getElementById("forestExplorer").style.display = "block";
+  const forestHint = document.getElementById("forestHint");
+  if(forestHint){
+    forestHint.innerText = "森林探索中：左侧摇杆移动，深入迷雾森林寻找 Boss。";
+  }
   scene.innerHTML = "你进入第一张大地图：森林（外环 -> 迷雾森林深处）。";
   drawForest();
   requestAnimationFrame(stepForestMovement);
+}
+
+function tryLavaEncounter(){
+  const chance = lavaState.floor === 1 ? 0.15 : 0.2;
+  if(Math.random() < chance){
+    lavaState.inBattle = true;
+    const monster = spawnMonster("lava");
+    scene.innerHTML = `你在熔岩洞${lavaState.floor}层遭遇了${monster.name}！`;
+    fight(monster);
+    lavaState.inBattle = false;
+  }
+}
+
+function checkLavaTransitionAndBoss(){
+  const tx = Math.round(lavaState.playerX);
+  const ty = Math.round(lavaState.playerY);
+
+  if(lavaState.floor === 1 && tx === LAVA_STAIRS_F1.x && ty === LAVA_STAIRS_F1.y){
+    lavaState.floor = 2;
+    lavaState.playerX = LAVA_ENTRANCE_F2.x;
+    lavaState.playerY = LAVA_ENTRANCE_F2.y;
+    scene.innerHTML = "你到达第一层尽头洞口，进入熔岩洞第二层。";
+    return;
+  }
+
+  if(lavaState.floor === 2 && tx === LAVA_ENTRANCE_F2.x && ty === LAVA_ENTRANCE_F2.y){
+    scene.innerHTML = "这里是返回第一层的洞口。";
+  }
+
+  if(lavaState.floor === 2 && !lavaState.bossDefeated && tx === LAVA_BOSS_TILE.x && ty === LAVA_BOSS_TILE.y){
+    lavaState.inBattle = true;
+    const boss = spawnMonster("lava");
+    boss.name = "熔岩洞深层领主";
+    boss.tier = "boss";
+    boss.dropTable = "lava_boss";
+    boss.hp = Math.round(boss.hp * 1.25);
+    boss.atk = Math.round(boss.atk * 1.15);
+    scene.innerHTML = "你抵达熔岩洞第二层最深处，Boss出现！";
+    fight(boss);
+    if(player.hp > 0){
+      lavaState.bossDefeated = true;
+      alert("你击败了熔岩洞 Boss！");
+    }
+    lavaState.inBattle = false;
+  }
+}
+
+function stepLavaMovement(){
+  if(!lavaState.active || lavaState.inBattle) return;
+  const speed = 0.1;
+  const nextX = lavaState.playerX + forestState.moveX * speed;
+  const nextY = lavaState.playerY + forestState.moveY * speed;
+  const tx = Math.round(nextX);
+  const ty = Math.round(nextY);
+  if(isLavaWalkable(lavaState.floor, tx, ty)){
+    const movedTile = tx !== Math.round(lavaState.playerX) || ty !== Math.round(lavaState.playerY);
+    lavaState.playerX = Math.max(0, Math.min(lavaState.cols - 1, nextX));
+    lavaState.playerY = Math.max(0, Math.min(lavaState.rows - 1, nextY));
+    if(movedTile){
+      checkAndOpenChest(lavaState.floor === 1 ? "lava1" : "lava2", tx, ty);
+      lavaState.encounterSteps++;
+      if(lavaState.encounterSteps >= 3){
+        lavaState.encounterSteps = 0;
+        tryLavaEncounter();
+        checkLavaTransitionAndBoss();
+      }
+    }
+  }
+  drawLava();
+  requestAnimationFrame(stepLavaMovement);
+}
+
+function startLavaExploration(){
+  forestState.active = false;
+  lavaState.active = true;
+  lavaState.floor = 1;
+  lavaState.playerX = 2;
+  lavaState.playerY = 13;
+  lavaState.encounterSteps = 0;
+  document.getElementById("forestExplorer").style.display = "block";
+  const forestHint = document.getElementById("forestHint");
+  if(forestHint){
+    forestHint.innerText = "熔岩洞探索中：通道外是黑暗空气墙，第一层尽头洞口可下到第二层。";
+  }
+  scene.innerHTML = "你进入熔岩洞第一层，通道曲折蜿蜒，小心前进。";
+  drawLava();
+  requestAnimationFrame(stepLavaMovement);
 }
 
 function fight(monster){
@@ -430,18 +744,55 @@ function findLoot(){
   updateInventory();
 }
 
+function renderTownMap(message = "你回到了城镇。"){
+  scene.innerHTML=`${message}<br>
+  <div id="townMap">
+    <div class="town-row">
+      <div class="town-cell town-home">主角的家</div>
+      <div class="town-cell">城镇广场</div>
+      <div class="town-cell town-forest-gate">森林入口</div>
+    </div>
+    <div class="town-row">
+      <div class="town-cell">公告板</div>
+      <div class="town-cell">旅店</div>
+      <div class="town-cell town-shop">商店</div>
+    </div>
+  </div>
+  <div>
+    <button onclick="goHome()">回家休息（免费+50%当前HP）</button>
+    <button onclick="openTownShop()">去商店（靠近右侧森林入口）</button>
+  </div>`;
+}
+
+function goHome(){
+  const heal = Math.max(1, Math.floor(player.hp * 0.5));
+  player.hp += heal;
+  updateHUD();
+  renderTownMap(`你在家里休息了一会，恢复 ${heal} HP。`);
+}
+
+function openTownShop(){
+  forestState.active = false;
+  lavaState.active = false;
+  document.getElementById("forestExplorer").style.display = "none";
+  scene.innerHTML=`商店（位置：靠近城镇右侧森林入口）<br>
+  <button onclick="promptPurchase('木剑',30)">木剑（30G）</button>
+  <button onclick="promptPurchase('铁剑',80)">铁剑（80G）</button>
+  <button onclick="promptPurchase('钢剑',150)">钢剑（150G）</button><br>
+  <button onclick="promptPurchase('布甲',30)">布甲（30G）</button>
+  <button onclick="promptPurchase('铁甲',80)">铁甲（80G）</button>
+  <button onclick="promptPurchase('骑士甲',150)">骑士甲（150G）</button><br>
+  <button onclick="promptPurchase('血药',20)">血药（20G）</button>
+  <button onclick="promptPurchase('蓝药',20)">蓝药（20G）</button><br>
+  <small>提示：背包中点击血药/蓝药可立即使用。</small><br>
+  <button onclick="goTown()">返回城镇地图</button>`;
+}
+
 function goTown(){
   forestState.active = false;
+  lavaState.active = false;
   document.getElementById("forestExplorer").style.display = "none";
-  scene.innerHTML=`商店<br>
-  <button onclick="buy('木剑',30)">木剑</button>
-  <button onclick="buy('铁剑',80)">铁剑</button>
-  <button onclick="buy('钢剑',150)">钢剑</button><br>
-  <button onclick="buy('布甲',30)">布甲</button>
-  <button onclick="buy('铁甲',80)">铁甲</button>
-  <button onclick="buy('骑士甲',150)">骑士甲</button><br>
-  <button onclick="buy('血药',20)">血药</button>
-  <button onclick="buy('蓝药',20)">蓝药</button>`;
+  renderTownMap();
 }
 
 function goForest(){
@@ -449,10 +800,7 @@ function goForest(){
 }
 
 function goLava(){
-  forestState.active = false;
-  document.getElementById("forestExplorer").style.display = "none";
-  scene.innerHTML = "你进入熔岩洞...";
-  fight(spawnMonster("lava"));
+  startLavaExploration();
 }
 
 function scare(){
