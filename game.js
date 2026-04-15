@@ -204,6 +204,18 @@ const forestState = {
   bossDefeated: false
 };
 
+const townState = {
+  active: false,
+  cols: 24,
+  rows: 16,
+  tile: 24,
+  playerX: 5,
+  playerY: 7,
+  lastInteractX: -1,
+  lastInteractY: -1,
+  lastInteractType: ""
+};
+
 const lavaState = {
   active: false,
   floor: 1,
@@ -596,6 +608,7 @@ function startForestExploration(){
     scene.innerHTML = "你已经在森林中探索。";
     return;
   }
+  townState.active = false;
   forestState.active = true;
   forestState.playerX = 2;
   forestState.playerY = 8;
@@ -684,6 +697,7 @@ function stepLavaMovement(){
 
 function startLavaExploration(){
   forestState.active = false;
+  townState.active = false;
   lavaState.active = true;
   lavaState.floor = 1;
   lavaState.playerX = 2;
@@ -699,21 +713,162 @@ function startLavaExploration(){
   requestAnimationFrame(stepLavaMovement);
 }
 
+// ===== 城镇地图 =====
+function getTownTileType(x, y){
+  if(x < 0 || y < 0 || x >= townState.cols || y >= townState.rows) return "wall";
+  // 家：左上角 x0-3，y0-2墙，y3门脸，门在x=1
+  if(x <= 3 && y <= 2) return "building";
+  if(x <= 3 && y === 3) return x === 1 ? "door_home" : "building";
+  // 公告板：x6-8，y0-2墙，y3门脸，门在x=7
+  if(x >= 6 && x <= 8 && y <= 2) return "building";
+  if(x >= 6 && x <= 8 && y === 3) return x === 7 ? "door_board" : "building";
+  // 商店：x14-18，y0-2墙，y3门脸，门在x=15
+  if(x >= 14 && x <= 18 && y <= 2) return "building";
+  if(x >= 14 && x <= 18 && y === 3) return x === 15 ? "door_shop" : "building";
+  // 主干道
+  if(y === 4 || y === 11) return "road";
+  // 森林入口（右侧区域，两条路之间）
+  if(x >= 20 && y >= 5 && y <= 10) return "gate";
+  // 旅店：x5-10，y12-14，入口门在x=7,y=12
+  if(x >= 5 && x <= 10 && y >= 12 && y <= 14) return (x === 7 && y === 12) ? "door_inn" : "building";
+  return "ground";
+}
+
+function isTownWalkable(x, y){
+  const t = getTownTileType(x, y);
+  return t !== "building" && t !== "wall";
+}
+
+function drawTown(){
+  const canvas = document.getElementById("forestCanvas");
+  if(!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const t = townState.tile;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for(let y = 0; y < townState.rows; y++){
+    for(let x = 0; x < townState.cols; x++){
+      const type = getTownTileType(x, y);
+      if(type === "building")        ctx.fillStyle = "#2a2244";
+      else if(type === "door_home")  ctx.fillStyle = "#7a4a1a";
+      else if(type === "door_shop")  ctx.fillStyle = "#a06030";
+      else if(type === "door_inn")   ctx.fillStyle = "#6a3a7a";
+      else if(type === "door_board") ctx.fillStyle = "#2a5a2a";
+      else if(type === "road")       ctx.fillStyle = "#6b5a3a";
+      else if(type === "gate")       ctx.fillStyle = "#1a5f1a";
+      else                           ctx.fillStyle = "#3a5040";
+      ctx.fillRect(x * t, y * t, t, t);
+    }
+  }
+  ctx.fillStyle = "#aaffaa";
+  ctx.font = "9px monospace";
+  ctx.fillText("家", 1*t+4, 1*t+16);
+  ctx.fillText("告示板", 6*t+2, 1*t+16);
+  ctx.fillText("商店", 15*t+2, 1*t+16);
+  ctx.fillText("森林\n入口", 20*t+4, 7*t+14);
+  ctx.fillText("旅店", 6*t+2, 13*t+14);
+  // 玩家像素小人
+  const px = townState.playerX * t;
+  const py = townState.playerY * t;
+  ctx.fillStyle = "#f3e5ab";
+  ctx.fillRect(px+8, py+4, 8, 8);
+  ctx.fillStyle = "#4aa3ff";
+  ctx.fillRect(px+7, py+12, 10, 8);
+  ctx.fillStyle = "#dddddd";
+  ctx.fillRect(px+6, py+20, 4, 4);
+  ctx.fillRect(px+14, py+20, 4, 4);
+}
+
+function checkTownInteraction(tx, ty){
+  const type = getTownTileType(tx, ty);
+  if(type === townState.lastInteractType && tx === townState.lastInteractX && ty === townState.lastInteractY) return;
+  townState.lastInteractX = tx;
+  townState.lastInteractY = ty;
+  townState.lastInteractType = type;
+  if(type === "door_home"){
+    const heal = Math.max(1, Math.floor(player.hp * 0.5));
+    player.hp += heal;
+    updateHUD();
+    scene.innerHTML = `你推开家门，躺下休息，恢复了 ${heal} HP。`;
+  } else if(type === "door_shop"){
+    townState.active = false;
+    document.getElementById("forestExplorer").style.display = "none";
+    openTownShop();
+  } else if(type === "door_inn"){
+    const cost = 10;
+    if(player.gold >= cost){
+      player.gold -= cost;
+      player.hp = Math.round(player.hp * 1.5);
+      player.mp = 50;
+      updateHUD();
+      scene.innerHTML = `老板收下 ${cost}G，你睡了个好觉，HP恢复到 ${player.hp}，MP完全恢复。`;
+    } else {
+      scene.innerHTML = `老板摇摇头："你的金币不够，需要 ${cost}G 才能入住。"`;
+    }
+  } else if(type === "door_board"){
+    scene.innerHTML = `【公告板】迷雾森林传出异响，寻勇者前往调查。熔岩洞深处有失踪商队，赏金 300G。`;
+  } else if(type === "gate"){
+    townState.active = false;
+    startForestExploration();
+  }
+}
+
+function stepTownMovement(){
+  if(!townState.active) return;
+  const speed = 0.12;
+  const nextX = townState.playerX + forestState.moveX * speed;
+  const nextY = townState.playerY + forestState.moveY * speed;
+  const tx = Math.round(nextX);
+  const ty = Math.round(nextY);
+  if(isTownWalkable(tx, ty)){
+    const movedTile = tx !== Math.round(townState.playerX) || ty !== Math.round(townState.playerY);
+    townState.playerX = Math.max(0, Math.min(townState.cols - 1, nextX));
+    townState.playerY = Math.max(0, Math.min(townState.rows - 1, nextY));
+    if(movedTile) checkTownInteraction(tx, ty);
+  }
+  drawTown();
+  requestAnimationFrame(stepTownMovement);
+}
+
+function startTownExploration(){
+  if(townState.active){
+    scene.innerHTML = "你已经在城镇中。";
+    return;
+  }
+  forestState.active = false;
+  lavaState.active = false;
+  townState.active = true;
+  townState.playerX = 5;
+  townState.playerY = 7;
+  townState.lastInteractX = -1;
+  townState.lastInteractY = -1;
+  townState.lastInteractType = "";
+  document.getElementById("forestExplorer").style.display = "block";
+  const hint = document.getElementById("forestHint");
+  if(hint) hint.innerText = "城镇探索：摇杆移动，走到建筑门口互动（家/公告板/商店/旅店/森林入口）。";
+  scene.innerHTML = "你回到了城镇。走近建筑门口即可互动。";
+  drawTown();
+  requestAnimationFrame(stepTownMovement);
+}
+// ===== 城镇地图结束 =====
+
 function fight(monster){
   if(!monster){
     alert("没有遇到怪物。");
     return;
   }
 
-  // 你先手
-  const playerDmg = calcDamage(player.atk, monster.def, 1);
-  monster.hp -= playerDmg;
-  alert(`你攻击${monster.name}(Lv.${monster.level}) -${playerDmg}`);
+  let round = 1;
+  const MAX_ROUNDS = 99;
+  while(monster.hp > 0 && player.hp > 0 && round <= MAX_ROUNDS){
+    const playerDmg = calcDamage(player.atk, monster.def, 1);
+    monster.hp -= playerDmg;
+    alert(`[第${round}回合] 你攻击 ${monster.name}(Lv.${monster.level}) -${playerDmg}，怪物剩余HP: ${Math.max(0, monster.hp)}`);
+    if(monster.hp <= 0) break;
 
-  if(monster.hp > 0){
     const enemyDmg = calcDamage(monster.atk, player.def, 1);
     player.hp -= enemyDmg;
-    alert(`${monster.name}反击你 -${enemyDmg}`);
+    alert(`${monster.name} 反击你 -${enemyDmg}，你剩余HP: ${Math.max(0, player.hp)}`);
+    round++;
   }
 
   if(player.hp <= 0){
@@ -726,12 +881,10 @@ function fight(monster){
     const exp = calcExpGain(monster);
     const gold = Math.max(1, Math.round(monster.goldBase * (0.8 + Math.random()*0.4)));
     player.gold += gold;
-    alert(`击败${monster.name}！获得 EXP ${exp} / Gold ${gold}`);
+    alert(`击败 ${monster.name}！共 ${round} 回合。获得 EXP ${exp} / Gold ${gold}`);
     gainExp(exp);
     rollDrop(monster.dropTable);
     updateInventory();
-  }else{
-    alert(`${monster.name} 还剩 HP ${monster.hp}`);
   }
 
   updateHUD();
@@ -742,33 +895,6 @@ updateExp();
 function findLoot(){
   rollDrop("forest_common");
   updateInventory();
-}
-
-function renderTownMap(message = "你回到了城镇。"){
-  scene.innerHTML=`${message}<br>
-  <div id="townMap">
-    <div class="town-row">
-      <div class="town-cell town-home">主角的家</div>
-      <div class="town-cell">城镇广场</div>
-      <div class="town-cell town-forest-gate">森林入口</div>
-    </div>
-    <div class="town-row">
-      <div class="town-cell">公告板</div>
-      <div class="town-cell">旅店</div>
-      <div class="town-cell town-shop">商店</div>
-    </div>
-  </div>
-  <div>
-    <button onclick="goHome()">回家休息（免费+50%当前HP）</button>
-    <button onclick="openTownShop()">去商店（靠近右侧森林入口）</button>
-  </div>`;
-}
-
-function goHome(){
-  const heal = Math.max(1, Math.floor(player.hp * 0.5));
-  player.hp += heal;
-  updateHUD();
-  renderTownMap(`你在家里休息了一会，恢复 ${heal} HP。`);
 }
 
 function openTownShop(){
@@ -792,7 +918,7 @@ function goTown(){
   forestState.active = false;
   lavaState.active = false;
   document.getElementById("forestExplorer").style.display = "none";
-  renderTownMap();
+  startTownExploration();
 }
 
 function goForest(){
