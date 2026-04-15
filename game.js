@@ -857,15 +857,18 @@ function fight(monster){
     return;
   }
 
-  // 你先手
-  const playerDmg = calcDamage(player.atk, monster.def, 1);
-  monster.hp -= playerDmg;
-  alert(`你攻击${monster.name}(Lv.${monster.level}) -${playerDmg}`);
+  let round = 1;
+  const MAX_ROUNDS = 99;
+  while(monster.hp > 0 && player.hp > 0 && round <= MAX_ROUNDS){
+    const playerDmg = calcDamage(player.atk, monster.def, 1);
+    monster.hp -= playerDmg;
+    alert(`[第${round}回合] 你攻击 ${monster.name}(Lv.${monster.level}) -${playerDmg}，怪物剩余HP: ${Math.max(0, monster.hp)}`);
+    if(monster.hp <= 0) break;
 
-  if(monster.hp > 0){
     const enemyDmg = calcDamage(monster.atk, player.def, 1);
     player.hp -= enemyDmg;
-    alert(`${monster.name}反击你 -${enemyDmg}`);
+    alert(`${monster.name} 反击你 -${enemyDmg}，你剩余HP: ${Math.max(0, player.hp)}`);
+    round++;
   }
 
   if(player.hp <= 0){
@@ -878,12 +881,10 @@ function fight(monster){
     const exp = calcExpGain(monster);
     const gold = Math.max(1, Math.round(monster.goldBase * (0.8 + Math.random()*0.4)));
     player.gold += gold;
-    alert(`击败${monster.name}！获得 EXP ${exp} / Gold ${gold}`);
+    alert(`击败 ${monster.name}！共 ${round} 回合。获得 EXP ${exp} / Gold ${gold}`);
     gainExp(exp);
     rollDrop(monster.dropTable);
     updateInventory();
-  }else{
-    alert(`${monster.name} 还剩 HP ${monster.hp}`);
   }
 
   updateHUD();
