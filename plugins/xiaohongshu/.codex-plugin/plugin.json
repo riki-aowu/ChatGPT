@@ -1,0 +1,25 @@
+{
+  "name": "xiaohongshu",
+  "version": "0.1.0",
+  "description": "Plan, draft, and analyze Xiaohongshu content workflows.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Xiaohongshu",
+    "shortDescription": "Browse, read, and analyze Xiaohongshu notes.",
+    "longDescription": "Xiaohongshu helps browse the home feed, read visible posts, inspect profile pages, plan note ideas, draft posts, and structure RED/Xiaohongshu content analysis workflows.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "content-planning",
+      "copywriting",
+      "workflow-guidance",
+      "browser-automation",
+      "post-analysis"
+    ],
+    "defaultPrompt": "Open Xiaohongshu and refresh my home feed."
+  }
+}
