@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "xiaohongshu": {
+      "command": "python",
+      "args": [
+        "./scripts/xiaohongshu_mcp.py"
+      ]
+    }
+  }
+}
