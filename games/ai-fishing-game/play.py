@@ -44,6 +44,7 @@ def main() -> None:
     engine.new_game(20260626)
     print("# 寒枝的真实钓鱼战报 🎣")
     print("引擎：tutusagi/ai-fishing-game | 种子：20260626")
+    # A short blind-play outing: explore first, then buy bait and keep fishing.
     act(engine, "status")
     act(engine, "cast 5 stop=new,rare,event")
     act(engine, "inventory")
