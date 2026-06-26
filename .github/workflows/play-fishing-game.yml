@@ -1,0 +1,16 @@
+name: Play AI Fishing Game
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'games/ai-fishing-game/**'
+      - '.github/workflows/play-fishing-game.yml'
+
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run a real fishing session
+        run: python games/ai-fishing-game/play.py
